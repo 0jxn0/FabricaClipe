@@ -8,13 +8,18 @@ export class IpcTransport {
 
   async connect() {
     this._set('connecting');
+    this.off?.(); this.off = null; clearTimeout(this.timer);
     try {
       this.off = this.api.events.onEvent((e) => this._emit('message', e)); // assina antes do snapshot: nada se perde (duplicados são ignorados)
       const snap = await this.api.events.snapshot();                         // recuperação de estado: histórico marcado replay:true
       for (const e of snap.events) this._emit('message', e);
-      this._set('open');
-    } catch (err) { console.error(err); this._set('disconnected', { retryIn: 0 }); }
+      this.tries = 0; this._set('open');
+    } catch (err) {
+      console.error(err); this.tries = (this.tries ?? 0) + 1;
+      const retryIn = Math.min(15000, 1000 * 2 ** (this.tries - 1)); this._set('disconnected', { retryIn });
+      this.timer = setTimeout(() => this.connect(), retryIn);
+    }
   }
 
-  close() { this.off?.(); this._set('closed'); }
+  close() { clearTimeout(this.timer); this.off?.(); this._set('closed'); }
 }

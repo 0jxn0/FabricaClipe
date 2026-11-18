@@ -21,6 +21,10 @@ export function hardenWindow(win: BrowserWindow) {
   wc.setWindowOpenHandler(() => ({ action: 'deny' }));
   wc.on('will-navigate', (e, url) => { if (!url.startsWith(APP_ORIGIN + '/')) e.preventDefault(); });
   wc.on('will-attach-webview', (e) => e.preventDefault());
+  const block = (e: Electron.Event, url: string) => { if (!url.startsWith(APP_ORIGIN + '/')) e.preventDefault(); };
+  wc.on('will-redirect', block);
+  // iframes e navegações de subframe (detalhes no 1º argumento nas versões novas do Electron)
+  (wc as unknown as { on(n: string, f: (d: { url?: string; preventDefault(): void }) => void): void }).on('will-frame-navigate', (d) => { if (!String(d.url ?? '').startsWith(APP_ORIGIN + '/')) d.preventDefault(); });
 }
 
 export const fromApp = (url: string | undefined) => !!url && url.startsWith(APP_ORIGIN + '/');

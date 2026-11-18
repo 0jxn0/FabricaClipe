@@ -24,10 +24,11 @@ export class Db {
 
   /** Transação (aninhável via SAVEPOINT). Qualquer exceção desfaz tudo. */
   tx<T>(fn: () => T): T {
-    const name = `sp${this.depth++}`;
-    this.raw.exec(this.depth === 1 ? 'BEGIN IMMEDIATE' : `SAVEPOINT ${name}`);
-    try { const r = fn(); this.raw.exec(this.depth === 1 ? 'COMMIT' : `RELEASE ${name}`); return r; }
-    catch (e) { this.raw.exec(this.depth === 1 ? 'ROLLBACK' : `ROLLBACK TO ${name}`); throw e; }
+    const name = `sp${this.depth}`, top = this.depth === 0;
+    this.raw.exec(top ? 'BEGIN IMMEDIATE' : `SAVEPOINT ${name}`); // se falhar (banco ocupado), depth não mudou
+    this.depth++;
+    try { const r = fn(); this.raw.exec(top ? 'COMMIT' : `RELEASE ${name}`); return r; }
+    catch (e) { this.raw.exec(top ? 'ROLLBACK' : `ROLLBACK TO ${name}`); throw e; }
     finally { this.depth--; }
   }
 

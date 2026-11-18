@@ -2,7 +2,7 @@
 // Eventos de fluxo (transferred/published/...) não mexem na estação: seguem para o FlowManager via 'accepted'.
 import { EVENT_TYPES, TIMING } from '../config.js';
 
-const TERMINAL = new Set(['clip.job.completed', 'clip.job.failed', 'clip.job.cancelled']);
+const TERMINAL = new Set(['clip.job.completed', 'clip.job.failed', 'clip.job.cancelled', 'clip.job.paused']);
 const FLOW_ONLY = new Set(['clip.job.transferred', 'clip.job.published', 'clip.job.publish_failed']);
 const MAX_JOBS = 200;
 
@@ -95,12 +95,14 @@ export class EventManager {
     if (FLOW_ONLY.has(e.type)) { touch(); this.emit('change', this.snapshot(e.deskId)); return { ok: true, e }; }
 
     // Reinício de um job já finalizado só com timestamp mais novo (retry); sem timestamp é ruído fora de ordem.
-    if (job?.done && (e.type === 'clip.job.started' || e.type === 'clip.job.queued' || e.type === 'clip.job.received') && e.ts && e.ts > (job.doneTs ?? 0)) {
+    if (job?.done && (e.type === 'clip.job.started' || e.type === 'clip.job.queued' || e.type === 'clip.job.received') && e.ts && e.ts >= (job.doneTs ?? 0)) {
       desk.jobs.delete(e.jobId); job = undefined;
     }
 
     if (TERMINAL.has(e.type)) {
-      if (job?.done) return { ok: false, reason: 'already-finished' };
+      // falha de transferência chega depois da conclusão da etapa; cancelar um job que falhou também é válido
+      const overrides = job?.done && e.ts && e.ts >= (job.doneTs ?? 0) && ((e.type === 'clip.job.failed' && job.status === 'completed') || (e.type === 'clip.job.cancelled' && job.status === 'failed'));
+      if (job?.done && !overrides) return { ok: false, reason: 'already-finished' };
     } else if (job?.done) {
       if (e.type === 'clip.job.publishing' || e.type === 'clip.job.received') { touch(); return { ok: true, e }; } // só fluxo
       return { ok: false, reason: 'stale-after-finish' };
@@ -145,6 +147,7 @@ export class EventManager {
         ensure('working');
         job.done = true; job.doneTs = e.ts ?? 0;
         job.status = e.type.split('.')[2];
+        if (job.status === 'paused') job.status = 'cancelled'; // pausa: a mesa fica livre; o job volta com um novo queued
         job.duration = e.duration ?? null; job.error = e.error ?? null;
         const isActive = v.jobId === job.id || !this._activeLive(desk);
         if (isActive) this._finish(desk, job, e.replay);

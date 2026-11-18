@@ -66,6 +66,7 @@ export class Orchestrator {
 
   // ---------------------------------------------------------------- ciclo de vida
   async start(): Promise<void> {
+    if (!this.stopped || this.timer) return; // já iniciado
     this.publish({ event: 'system.initializing', payload: {} });
     for (const s of STATIONS) {
       if (s === 'approval') { this.setEmployee(s, 'idle'); continue; } // aprovação é humana: sempre disponível
@@ -86,7 +87,7 @@ export class Orchestrator {
     this.stopped = true; if (this.timer) clearInterval(this.timer);
     if (interrupt) for (const r of this.running.values()) { r.want = 'shutdown'; r.abort.abort(); }
     const t0 = Date.now();
-    while (this.running.size && Date.now() - t0 < 15000) await new Promise((r) => setTimeout(r, 50));
+    while (this.running.size && Date.now() - t0 < (interrupt ? 2000 : 15000)) await new Promise((r) => setTimeout(r, 50));
     this.publish({ event: 'system.shutdown', payload: { interrupted: this.running.size } });
   }
 
@@ -182,20 +183,24 @@ export class Orchestrator {
       this.publish({ event: 'clip.station.completed', jobId: job.id, stationId: station, payload: { output: path.basename(result.outputPath), metadata: result.metadata ?? {} } });
       this.setEmployee(station, 'completed', job.id, 100);
       this.handoff(job.id, station, result.outputPath);
-    } catch (e) {
+    } catch (thrown) {
+      const e = thrown instanceof Error ? thrown : new Error(String(thrown));
       const want = this.running.get(job.id)?.want;
       if (want === 'pause') { this.db.run("UPDATE job_steps SET state = 'paused', finished_at = ? WHERE id = ?", this.now(), stepId); this.settle(job.id, 'paused', station); }
       else if (want === 'cancel') { this.db.run("UPDATE job_steps SET state = 'cancelled', finished_at = ? WHERE id = ?", this.now(), stepId); this.settle(job.id, 'cancelled', station); }
       else if (want === 'shutdown') this.db.run("UPDATE job_steps SET state = 'interrupted', finished_at = ? WHERE id = ?", this.now(), stepId); // recover() decide na próxima abertura
-      else this.failStep(job, station, stepId, e as Error);
+      else this.failStep(job, station, stepId, e);
     } finally {
-      this.running.delete(job.id); this.lastProgress.delete(job.id);
+      if (this.running.get(job.id)?.abort === abort) this.running.delete(job.id); // a etapa seguinte pode já ter registrado o mesmo job
+      this.lastProgress.delete(job.id);
       if (this.running.size < this.cfg.maxJobs && !this.stopped) setTimeout(() => void this.pump(), 0);
     }
   }
 
   private verifyResult(r: StepResult) {
     if (!r?.outputPath) throw new Error('worker não informou o arquivo resultante');
+    const root = path.join(this.d.dataDir, 'projects');
+    for (const f of [r.outputPath, ...(r.extraFiles ?? []).map((x) => x.path)]) ensureInside(root, f); // resultado só dentro da pasta de projetos
     const st = fs.statSync(r.outputPath);
     if (!st.isFile() || st.size === 0) throw new Error(`arquivo resultante inválido ou vazio: ${r.outputPath}`);
   }
@@ -250,7 +255,7 @@ export class Orchestrator {
     this.publish({ event: 'clip.transfer.completed', jobId, stationId: from, payload: { from, to, file: name } });
     this.publish({ event: 'clip.file.received', jobId, stationId: to, payload: { from, file: name } });
     this.setEmployee(to, to === 'approval' ? 'receiving' : 'receiving', jobId);
-    this.publish({ event: 'clip.job.queued', jobId, stationId: to, payload: { name: this.job(jobId)?.name ?? '' } });
+    this.publish({ event: 'clip.job.queued', jobId, stationId: to, payload: { name: this.job(jobId)?.name ?? '', platforms: this.job(jobId)?.platforms ?? [] } });
     void this.pump();
   }
 
@@ -258,7 +263,7 @@ export class Orchestrator {
   private queueApprovals() {
     for (const r of this.db.all<Row>("SELECT * FROM jobs WHERE station_id = 'approval' AND state = 'queued' AND locked_by IS NULL")) {
       this.transition(r.id, 'awaiting_approval');
-      this.db.run("INSERT INTO approvals (job_id, state, requested_at) VALUES (?, 'pending', ?)", r.id, this.now());
+      if (!this.db.get("SELECT 1 AS x FROM approvals WHERE job_id = ? AND state = 'pending'", r.id)) this.db.run("INSERT INTO approvals (job_id, state, requested_at) VALUES (?, 'pending', ?)", r.id, this.now());
       this.setEmployee('approval', 'working', r.id, 0);
       this.publish({ event: 'clip.station.started', jobId: r.id, stationId: 'approval', payload: { name: r.name } });
       this.publish({ event: 'clip.job.started', jobId: r.id, stationId: 'approval', payload: { name: r.name } });
@@ -307,6 +312,7 @@ export class Orchestrator {
 
   private settle(jobId: string, state: 'paused' | 'cancelled', station: StationId) {
     this.transition(jobId, state, { unlock: state !== 'paused' ? true : false, completed: state === 'cancelled' });
+    this.db.run("UPDATE approvals SET state = ? WHERE job_id = ? AND state = 'pending'", state, jobId);
     if (state === 'paused') this.db.run('UPDATE jobs SET locked_by = NULL WHERE id = ?', jobId);
     this.setEmployee(station, 'idle'); this.publish({ event: 'clip.station.idle', stationId: station, payload: {} });
     this.publish({ event: state === 'paused' ? 'clip.job.paused' : 'clip.job.cancelled', jobId, stationId: station, payload: {} });
@@ -336,13 +342,14 @@ export class Orchestrator {
       const job = toJob(r); n++;
       if (r.state === 'transferring') { // continua só se o arquivo existir e a transferência ainda não foi concluída
         const tr = this.db.get<{ id: number; to_station: StationId; from_station: StationId; file_path: string }>("SELECT * FROM transfers WHERE job_id = ? AND state = 'started' ORDER BY id DESC LIMIT 1", job.id);
-        if (tr && fs.existsSync(tr.file_path)) { this.db.run("UPDATE transfers SET state = 'failed', error = 'interrompida' WHERE id = ?", tr.id); this.handoff(job.id, tr.from_station, tr.file_path, tr.to_station); continue; }
+        // handoff refaz processing -> transferring
+      if (tr && fs.existsSync(tr.file_path)) { this.db.run("UPDATE transfers SET state = 'failed', error = 'interrompida' WHERE id = ?", tr.id); this.db.run("UPDATE jobs SET state = 'processing' WHERE id = ?", job.id); this.handoff(job.id, tr.from_station, tr.file_path, tr.to_station); continue; }
         this.db.run("UPDATE jobs SET state = 'failed', error = 'transferência interrompida e arquivo ausente', locked_by = NULL WHERE id = ?", job.id); continue;
       }
       const w = this.workers.get(job.stationId as StationId);
       const verdict = w ? await w.recover(job).catch(() => 'fail' as const) : 'restart';
-      if (verdict === 'restart') this.db.run("UPDATE jobs SET state = 'queued', locked_by = NULL, progress = 0, updated_at = ? WHERE id = ?", this.now(), job.id);
-      else this.db.run("UPDATE jobs SET state = 'failed', error = 'etapa interrompida: confirme o estado antes de repetir', locked_by = NULL, updated_at = ? WHERE id = ?", this.now(), job.id);
+      if (verdict === 'restart') { this.db.run("UPDATE jobs SET state = 'queued', locked_by = NULL, progress = 0, updated_at = ? WHERE id = ?", this.now(), job.id); this.publish({ event: 'clip.job.queued', jobId: job.id, stationId: job.stationId, payload: { name: job.name, platforms: job.platforms, recovered: true } }); }
+      else { this.db.run("UPDATE jobs SET state = 'failed', error = 'etapa interrompida: confirme o estado antes de repetir', locked_by = NULL, updated_at = ? WHERE id = ?", this.now(), job.id); this.publish({ event: 'clip.station.failed', jobId: job.id, stationId: job.stationId, payload: { error: 'etapa interrompida: confirme o estado antes de repetir' } }); }
       this.db.run("UPDATE job_steps SET state = 'interrupted', finished_at = COALESCE(finished_at, ?) WHERE job_id = ? AND state IN ('validating','processing')", this.now(), job.id);
       this.log.warn(`job recuperado (${verdict})`, { jobId: job.id, stationId: job.stationId });
     }

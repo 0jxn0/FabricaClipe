@@ -16,7 +16,12 @@ export function startBackend(dataDir: string, workers: Worker[] = []) {
   const applied = db.migrate(); logger.attach(db);
   if (applied.length) logger.info(`migrations aplicadas: ${applied.join(', ')}`);
   const integrity = db.integrity(); if (integrity !== 'ok') logger.error(`banco com problema: ${integrity}`);
-  try { db.backup(path.join(dataDir, 'backups', `fabrica-${new Date().toISOString().slice(0, 10)}.sqlite`)); } catch (e) { logger.warn(`backup do banco ignorado: ${(e as Error).message}`); }
+  try { // um backup consistente por abertura; mantém os 7 mais recentes
+    const bdir = path.join(dataDir, 'backups');
+    db.backup(path.join(bdir, `fabrica-${new Date().toISOString().replace(/[:.]/g, '-')}.sqlite`));
+    const olds = fs.readdirSync(bdir).filter((f) => /^fabrica-.*\.sqlite$/.test(f)).sort().slice(0, -7);
+    for (const f of olds) fs.rmSync(path.join(bdir, f), { force: true });
+  } catch (e) { logger.warn(`backup do banco ignorado: ${(e as Error).message}`); }
   const bus = new EventBus(db, (m, e) => logger.error(m, { err: String(e) }));
   const orchestrator = new Orchestrator({ db, bus, logger, dataDir, workers });
   return { db, bus, orchestrator, logger, dataDir };

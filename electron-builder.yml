@@ -1,8 +1,10 @@
-# Empacotamento Windows (NSIS). AINDA NÃO EXECUTADO/TESTADO — ver docs/ARQUITETURA.md, Fase 7.
+# Empacotamento Windows (NSIS). `npm run pack` gera o app descompactado; `npm run dist` gera o instalador.
 appId: br.fabricadeclipe.app
 productName: Fábrica de Clipe
 directories: { output: release }
-files: [dist/**, public/**, node_modules/three/build/**, package.json]
+electronDist: node_modules/electron/dist
+files: [dist/**, public/**, node_modules/three/build/**, node_modules/ffmpeg-static/**, node_modules/ffprobe-static/bin/win32/x64/**, node_modules/ffprobe-static/index.js, node_modules/ffprobe-static/package.json, package.json]
+asarUnpack: [node_modules/ffmpeg-static/**, node_modules/ffprobe-static/**]
 asar: true
 win:
   target: [{ target: nsis, arch: [x64] }]

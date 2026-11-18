@@ -6,7 +6,7 @@ import { CONTRACT_VERSION, EnvelopeSchema, type EventDraft, type EventEnvelope }
 type Listener = (e: EventEnvelope) => void;
 
 export class EventBus {
-  private listeners = new Set<Listener>();
+  private listeners = new Set<Listener>(); private queue: EventEnvelope[] = []; private draining = false;
   private db: Db; private onError: (m: string, e: unknown) => void;
   constructor(db: Db, onError: (m: string, e: unknown) => void = () => {}) { this.db = db; this.onError = onError; }
 
@@ -20,14 +20,24 @@ export class EventBus {
       eventId, draft.event, timestamp, draft.jobId ?? null, draft.stationId ?? null, draft.employeeId ?? null, JSON.stringify(draft.payload ?? {}));
     const parsed = EnvelopeSchema.safeParse({ ...draft, eventId, timestamp, version: CONTRACT_VERSION, seq: Number(res.lastInsertRowid) });
     if (!parsed.success) { this.db.run('DELETE FROM event_logs WHERE event_id = ?', eventId); throw new Error(`Evento inválido (${draft.event}): ${parsed.error.issues[0]?.message}`); }
-    for (const fn of [...this.listeners]) { try { fn(parsed.data); } catch (e) { this.onError('listener de evento falhou', e); } }
+    this.queue.push(parsed.data);
+    if (!this.draining) { // evento publicado por um listener entra na fila: todos recebem na ordem de seq
+      this.draining = true;
+      try { for (let ev = this.queue.shift(); ev; ev = this.queue.shift()) for (const fn of [...this.listeners]) { try { fn(ev); } catch (e) { this.onError('listener de evento falhou', e); } } }
+      finally { this.draining = false; }
+    }
     return parsed.data;
   }
 
   /** Recuperação: tudo que aconteceu depois de `seq` (cliente guarda o último seq visto). */
-  since(seq = 0, limit = 500): EventEnvelope[] {
+  since(seq = 0, limit = 500): EventEnvelope[] { return this.rows('SELECT * FROM event_logs WHERE seq > ? ORDER BY seq LIMIT ?', Math.max(0, seq), Math.max(0, Math.min(Math.floor(limit), 2000))); }
+
+  /** Os `limit` eventos MAIS RECENTES, em ordem (snapshot de abertura: o estado atual, não o passado). */
+  recent(limit = 1500): EventEnvelope[] { return this.rows('SELECT * FROM (SELECT * FROM event_logs ORDER BY seq DESC LIMIT ?) ORDER BY seq', limit); }
+
+  private rows(sql: string, ...p: (string | number)[]): EventEnvelope[] {
     return this.db.all<{ seq: number; event_id: string; event: string; timestamp: string; job_id: string | null; station_id: string | null; employee_id: string | null; payload_json: string }>(
-      'SELECT * FROM event_logs WHERE seq > ? ORDER BY seq LIMIT ?', seq, limit).map((r) => ({
+      sql, ...p).map((r) => ({
       event: r.event as EventEnvelope['event'], eventId: r.event_id, version: CONTRACT_VERSION, seq: r.seq, timestamp: r.timestamp,
       ...(r.job_id ? { jobId: r.job_id } : {}), ...(r.station_id ? { stationId: r.station_id } : {}), ...(r.employee_id ? { employeeId: r.employee_id } : {}),
       payload: JSON.parse(r.payload_json) as Record<string, unknown>,

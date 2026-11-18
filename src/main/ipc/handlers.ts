@@ -5,12 +5,13 @@ import type { Backend } from '../bootstrap/backend.ts';
 import { diagnostics } from '../../backend/services/diagnostics.ts';
 import { toLegacy } from '../../backend/core/compat/legacyBridge.ts';
 import { validateImportFile, VIDEO_EXT } from '../../backend/infrastructure/filesystem/safePaths.ts';
+import { check as ffCheck } from '../../backend/infrastructure/ffmpeg/ffmpeg.ts';
 import { fromApp } from '../security/security.ts';
 
-export function registerIpc(be: Backend, getWin: () => BrowserWindow | null, quit: () => void) {
+export function registerIpc(be: Backend, getWin: () => BrowserWindow | null, quit: () => void, isQuitting: () => boolean = () => false) {
   const approved = new Set<string>(); // só caminhos escolhidos pelo usuário no diálogo nativo podem virar job
   const guard = <T>(fn: (e: IpcMainInvokeEvent, a: unknown) => T) => (e: IpcMainInvokeEvent, a: unknown) => {
-    if (!fromApp(e.senderFrame?.url)) throw new Error('origem não autorizada');
+    if (!fromApp(e.senderFrame?.url) || e.senderFrame !== e.sender.mainFrame) throw new Error('origem não autorizada');
     try { return fn(e, a); } catch (err) { be.logger.error(`ipc falhou: ${(err as Error).message}`); throw new Error((err as Error).message); }
   };
 
@@ -22,16 +23,17 @@ export function registerIpc(be: Backend, getWin: () => BrowserWindow | null, qui
   }));
   ipcMain.handle(CH.jobsCreate, guard((_e, a) => {
     const input = IpcSchemas.create.parse(a);
-    if (!approved.has(input.sourcePath)) throw new Error('arquivo não selecionado pelo diálogo de importação');
+    if (isQuitting()) throw new Error('a fábrica está sendo encerrada');
+    if (!approved.delete(input.sourcePath)) throw new Error('arquivo não selecionado pelo diálogo de importação (a seleção vale uma vez)');
     return be.orchestrator.createJob(input);
   }));
   ipcMain.handle(CH.jobsList, guard(() => be.orchestrator.listJobs()));
   ipcMain.handle(CH.jobsAction, guard((_e, a) => be.orchestrator.act(IpcSchemas.action.parse(a))));
   ipcMain.handle(CH.jobsHistory, guard((_e, a) => be.orchestrator.history(IpcSchemas.history.parse(a).jobId)));
   ipcMain.handle(CH.approvalDecide, guard((_e, a) => be.orchestrator.decide(IpcSchemas.decide.parse(a))));
-  ipcMain.handle(CH.eventsSnapshot, guard(() => ({ lastSeq: be.bus.lastSeq(), events: be.bus.since(0, 2000).map((e) => toLegacy(e, true)).filter(Boolean) })));
+  ipcMain.handle(CH.eventsSnapshot, guard(() => ({ lastSeq: be.bus.lastSeq(), events: be.bus.recent(1500).map((e) => toLegacy(e, true)).filter(Boolean) })));
   ipcMain.handle(CH.eventsSince, guard((_e, a) => be.bus.since(IpcSchemas.since.parse(a).seq).map((e) => toLegacy(e, true)).filter(Boolean)));
-  ipcMain.handle(CH.diagnostics, guard(() => diagnostics({ db: be.db, orch: be.orchestrator, dataDir: be.dataDir })));
+  ipcMain.handle(CH.diagnostics, guard(() => diagnostics({ db: be.db, orch: be.orchestrator, dataDir: be.dataDir, ffmpeg: () => ffCheck() })));
   ipcMain.handle(CH.quit, guard(() => { quit(); }));
 
   // empurra eventos novos ao renderer (contrato legado; o envelope completo fica no event_logs)

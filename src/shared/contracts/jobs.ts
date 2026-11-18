@@ -12,11 +12,11 @@ export const RenderConfig = z.object({
 
 export const CreateJobInput = z.object({
   name: z.string().trim().min(1).max(120),
-  projectId: z.string().trim().min(1).max(64).default('default'),
+  projectId: z.string().trim().regex(/^[\w-]{1,64}$/).default('default'),
   sourcePath: z.string().min(1).max(1024),
   platforms: z.array(Platform).max(4).default([]),
   priority: z.number().int().min(0).max(9).default(5),
-  config: z.object({ cut: z.object({ segmentSeconds: z.number().min(1).max(600).optional() }).default({}), subtitleLang: z.string().max(16).default('pt'), render: RenderConfig }).default({ cut: {}, subtitleLang: 'pt', render: RenderConfig.parse(undefined) }),
+  config: z.object({ cut: z.object({ startSec: z.number().min(0).optional(), durationSec: z.number().min(0.5).max(3600).optional() }).default({}), subtitleLang: z.string().max(16).default('pt'), render: RenderConfig }).default({ cut: {}, subtitleLang: 'pt', render: RenderConfig.parse(undefined) }),
 });
 export type CreateJobInput = z.infer<typeof CreateJobInput>;
 

@@ -17,8 +17,11 @@ export function toLegacy(e: EventEnvelope, replay = false): LegacyEvent | null {
     case 'clip.station.progress': return deskId ? { type: 'clip.job.progress', deskId, ...base, progress: p.progress } : null;
     case 'clip.station.completed': return deskId ? { type: 'clip.job.completed', deskId, ...base } : null;
     case 'clip.station.failed': return deskId ? { type: 'clip.job.failed', deskId, ...base, error: p.error } : null;
+    case 'clip.job.paused': return deskId ? { type: 'clip.job.paused', deskId, ...base } : null;
+    case 'clip.job.failed': return deskId ? { type: 'clip.job.failed', deskId, ...base, error: p.error } : null;
+    case 'clip.transfer.failed': return deskId ? { type: 'clip.job.failed', deskId, ...base, error: p.error } : null;
     case 'clip.job.cancelled': return deskId ? { type: 'clip.job.cancelled', deskId, ...base } : null;
-    case 'clip.transfer.started': return { type: 'clip.job.transferred', deskId: p.fromDesk, toDeskId: p.toDesk, ...base };
+    case 'clip.transfer.started': return !p.fromDesk || !p.toDesk ? null : { type: 'clip.job.transferred', deskId: p.fromDesk, toDeskId: p.toDesk, ...base };
     case 'clip.file.received': return deskId ? { type: 'clip.job.received', deskId, ...base } : null;
     case 'clip.publish.started': return deskId ? { type: 'clip.job.publishing', deskId, ...base, platform: p.platform } : null;
     case 'clip.publish.completed': return deskId ? { type: 'clip.job.published', deskId, ...base, platform: p.platform } : null;

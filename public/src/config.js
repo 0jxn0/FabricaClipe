@@ -10,7 +10,7 @@ export const DESKS = [
 
 export const EVENT_TYPES = [
   'clip.job.queued', 'clip.job.started', 'clip.job.progress',
-  'clip.job.completed', 'clip.job.failed', 'clip.job.cancelled',
+  'clip.job.completed', 'clip.job.failed', 'clip.job.cancelled', 'clip.job.paused',
   // fluxo entre estações e publicação (ver README: "Contrato de eventos")
   'clip.job.transferred', 'clip.job.received',
   'clip.job.publishing', 'clip.job.published', 'clip.job.publish_failed',
