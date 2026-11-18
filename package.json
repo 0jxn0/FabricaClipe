@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server/server.js",
     "demo": "node server/server.js --demo",
-    "test": "node --test tests/events.test.mjs tests/flow.test.mjs tests/stats.test.mjs tests/orchestrator.test.ts tests/ffmpeg.test.ts tests/capture.test.ts tests/cutting.test.ts tests/qa-backend.test.ts",
+    "test": "node --test tests/events.test.mjs tests/flow.test.mjs tests/stats.test.mjs tests/orchestrator.test.ts tests/ffmpeg.test.ts tests/capture.test.ts tests/cutting.test.ts tests/qa-backend.test.ts tests/subtitles.test.ts tests/rendering.test.ts tests/analysis.test.ts tests/ui-media.test.ts",
     "typecheck": "tsc --noEmit -p .",
     "build": "esbuild src/main/index.ts --bundle --platform=node --format=cjs --external:electron --outfile=dist/main.cjs --log-level=warning && esbuild src/preload/index.ts --bundle --platform=node --format=cjs --external:electron --outfile=dist/preload.cjs --log-level=warning",
     "desktop": "npm run build && electron .",

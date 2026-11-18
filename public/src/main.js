@@ -13,6 +13,7 @@ import { UIController } from './view/UIController.js';
 import { ResponsiveManager } from './view/ResponsiveManager.js';
 import { computeLayout } from './view/OfficeLayout.js';
 import { drawBackground } from './view/art.js';
+import { DesktopControls } from './view/DesktopControls.js';
 
 const ids = DESKS.map((d) => d.id);
 const stage = document.getElementById('stage');
@@ -40,7 +41,10 @@ if (new URLSearchParams(location.search).has('debug')) events.on('event', (r) =>
 
 // App desktop: IPC tipado do preload. Navegador (dev/rede): WebSocket. O restante da interface não muda.
 const ws = window.fabrica ? new IpcTransport(window.fabrica) : new WebSocketClient(resolveWsUrl());
-ws.on('message', (m) => events.handle(m));
+// Controles reais (importar, pausar/cancelar, aprovar com preview): só no app desktop; no navegador nada muda.
+const desktop = window.fabrica ? new DesktopControls(window.fabrica, ui) : null;
+if (desktop) { ui.onCurrent = ((prev) => () => { prev(); desktop.render(); })(ui.onCurrent); }
+ws.on('message', (m) => { events.handle(m); desktop?.onEvent(m); });
 ws.on('status', (s) => { workers.setLink(s.state === 'open'); ui.setConnection(s); });
 
 const responsive = new ResponsiveManager(stage, (info) => {

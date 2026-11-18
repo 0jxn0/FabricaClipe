@@ -81,3 +81,37 @@ dd { margin:0; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space
   .bubble { font-size:12px; } dd, dt { line-height:1.4; }
 }
 @media (prefers-reduced-motion:reduce) { .pill[data-state=wait] i { animation:none; } }
+/* ---- controles do app desktop (importar, controles do job, aprovação) ---- */
+.btn { font:inherit; font-size:12px; color:var(--txt); background:#0a0d14; border:1px solid var(--line); border-radius:6px; padding:6px 12px; min-height:32px; cursor:pointer; touch-action:manipulation; }
+.btn:hover:not(:disabled) { border-color:var(--cy); } .btn:disabled { opacity:.5; cursor:default; }
+.btn:focus-visible, .drawer :is(select,textarea):focus-visible, #imp-dlg :is(input):focus-visible { outline:2px solid var(--cy); outline-offset:2px; }
+.btn.primary { color:#04202a; background:var(--cy); border-color:var(--cy); font-weight:600; }
+.btn.warn { color:var(--am); border-color:var(--am); } .btn.warn b { font-variant-numeric:tabular-nums; }
+.btn.danger { color:var(--rd); border-color:var(--rd); } .btn.sm { padding:3px 10px; min-height:28px; }
+.btn[hidden] { display:none; }
+#act-info { min-width:0; }
+.jobctl { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:6px; } .jobctl[hidden] { display:none; }
+.jc-name { flex:1 1 100%; color:var(--mut); font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.drawer { position:absolute; right:10px; top:10px; z-index:6; width:min(380px, calc(100% - 20px)); max-height:calc(100% - 20px); overflow:auto; display:grid; gap:6px; padding:10px; background:rgba(13,18,34,.97); border:1px solid var(--cy); border-radius:8px; }
+.drawer[hidden] { display:none; }
+.drawer header { display:flex; justify-content:space-between; align-items:center; } .drawer h2 { margin:0; font-size:13px; letter-spacing:.08em; text-transform:uppercase; color:var(--cy); }
+.drawer video { width:100%; max-height:42vh; background:#000; border-radius:4px; }
+.drawer label { font-size:11px; color:var(--mut); }
+.drawer :is(select,textarea) { font:inherit; color:var(--txt); background:#0a0d14; border:1px solid var(--line); border-radius:4px; padding:5px 8px; width:100%; resize:vertical; }
+.apv-title { margin:0; font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.msg { margin:0; padding:6px 8px; border:1px solid var(--rd); border-radius:4px; color:#ffd0d5; background:rgba(120,12,28,.5); font-size:12px; overflow-wrap:anywhere; } .msg[hidden] { display:none; } .msg p { margin:0 0 3px; }
+.row { display:flex; gap:8px; justify-content:flex-end; }
+#imp-dlg { color:var(--txt); background:var(--panel); border:1px solid var(--cy); border-radius:10px; padding:0; width:min(440px, calc(100vw - 24px)); max-height:calc(100dvh - 24px); overflow:auto; }
+#imp-dlg::backdrop { background:rgba(0,0,0,.65); }
+#imp-form { display:grid; gap:10px; padding:14px; } #imp-form h2 { margin:0; font-size:15px; color:var(--cy); }
+#imp-form fieldset { margin:0; border:1px solid var(--line); border-radius:6px; padding:8px 10px; } #imp-form legend { padding:0 6px; color:var(--mut); font-size:12px; }
+#imp-files { margin:0; padding-left:18px; max-height:84px; overflow:auto; font-size:12px; overflow-wrap:anywhere; }
+.chks { display:flex; flex-wrap:wrap; gap:6px 16px; } .chk { display:inline-flex; align-items:center; gap:6px; font-size:13px; cursor:pointer; } .chk input { width:18px; height:18px; accent-color:var(--cy); }
+.two { display:grid; grid-template-columns:1fr 1fr; gap:10px; } .two label { display:grid; gap:3px; font-size:12px; color:var(--mut); }
+.two input { font:inherit; color:var(--txt); background:#0a0d14; border:1px solid var(--line); border-radius:4px; padding:6px 8px; min-height:32px; width:100%; }
+#imp-form .hint { margin:6px 0 0; font-size:11px; }
+@media (max-width:639px), (max-aspect-ratio:9/10) {
+  #area-act { height:auto; min-height:78px; max-height:130px; overflow:auto; }
+  #top { flex-wrap:wrap; } h1 { flex:1 1 auto; } .btn { font-size:13px; }
+  .drawer { top:auto; bottom:8px; left:8px; right:8px; width:auto; max-height:62%; } .drawer video { max-height:28vh; }
+}

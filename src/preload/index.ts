@@ -10,7 +10,8 @@ const api: FabricaApi = {
     create: (i) => call(CH.jobsCreate, i), list: () => call(CH.jobsList), action: (i) => call(CH.jobsAction, i),
     history: (jobId) => call(CH.jobsHistory, { jobId }), decide: (i) => call(CH.approvalDecide, i),
   },
-  files: { pickVideos: () => call(CH.filesPick) },
+  files: { pickVideos: () => call(CH.filesPick), analyze: (path) => call(CH.filesAnalyze, { path }) },
+  media: { url: (jobId) => call(CH.mediaUrl, { jobId }) },
   events: {
     snapshot: () => call(CH.eventsSnapshot), since: (seq) => call(CH.eventsSince, { seq }),
     onEvent: (cb) => { const h = (_: unknown, e: Record<string, unknown>) => cb(e); ipcRenderer.on(CH.eventPush, h); return () => ipcRenderer.removeListener(CH.eventPush, h); },

@@ -13,6 +13,8 @@
   <h1>Fábrica de Clipe</h1>
   <span id="conn" class="pill" data-state="wait" role="status"><i></i><b>Conectando…</b></span>
   <span id="count" class="muted">6 estações</span>
+  <button id="apv-open" class="btn warn" type="button" hidden aria-expanded="false" aria-controls="apv">Aprovar vídeo <b>0</b></button>
+  <button id="btn-import" class="btn primary" type="button" hidden>Importar vídeo</button>
 </header>
 <main id="stage"><div id="hits"></div>
   <aside id="kpi" aria-label="Métricas da fábrica">
@@ -29,6 +31,16 @@
       <h3>Publicações</h3><ul id="k-plat"></ul>
       <h3>Concluídos por estação</h3><div id="k-desk"></div>
     </div>
+  </aside>
+  <aside id="apv" class="drawer" role="dialog" aria-modal="false" aria-labelledby="apv-h" hidden>
+    <header><h2 id="apv-h">Aprovação do vídeo</h2><button id="apv-close" class="btn sm" type="button" aria-label="Fechar painel de aprovação">Fechar</button></header>
+    <select id="apv-sel" aria-label="Escolher o job a aprovar" hidden></select>
+    <p id="apv-title" class="apv-title"></p>
+    <video id="apv-video" controls preload="metadata" playsinline aria-label="Preview do vídeo final"></video>
+    <label for="apv-note">Observação (opcional)</label>
+    <textarea id="apv-note" rows="2" maxlength="2000" placeholder="Motivo ou ajuste pedido"></textarea>
+    <p id="apv-msg" role="alert" class="msg" hidden></p>
+    <div class="row"><button id="apv-no" class="btn danger" type="button">Rejeitar</button><button id="apv-yes" class="btn primary" type="button">Aprovar</button></div>
   </aside></main>
 <section id="bar" aria-label="Painel de operação">
   <div id="area-ind" class="area">
@@ -40,8 +52,23 @@
     <div id="m-state" data-s="idle"><i></i><b>Fábrica ociosa</b></div>
   </div>
   <div id="area-belt" class="area" aria-label="Esteira de produção"><canvas id="belt"></canvas></div>
-  <div id="area-act" class="area" aria-live="polite"></div>
+  <div id="area-act" class="area"><div id="act-info" aria-live="polite"></div><div id="job-ctl" class="jobctl" role="group" aria-label="Controles do job" hidden></div></div>
 </section>
+<dialog id="imp-dlg" aria-labelledby="imp-h">
+  <form id="imp-form" method="dialog" novalidate>
+    <h2 id="imp-h">Importar vídeo</h2>
+    <ul id="imp-files" aria-label="Arquivos selecionados"></ul>
+    <fieldset><legend>Plataformas de destino</legend><div id="imp-plats" class="chks"></div>
+      <p class="hint">Sem plataforma marcada, o job termina na aprovação, sem publicar.</p></fieldset>
+    <fieldset><legend>Intervalo de corte (opcional)</legend>
+      <div class="two"><label>Início (s)<input name="start" type="number" inputmode="decimal" min="0" step="0.1" placeholder="0"></label>
+      <label>Duração (s)<input name="duration" type="number" inputmode="decimal" min="0.5" max="3600" step="0.1" placeholder="vídeo inteiro"></label></div></fieldset>
+    <label class="chk"><input name="subs" type="checkbox" checked> Legendas automáticas</label>
+    <div id="imp-rep" class="msg" aria-live="polite" hidden></div>
+    <div id="imp-err" class="msg" role="alert" hidden></div>
+    <div class="row"><button id="imp-cancel" class="btn" type="button">Cancelar</button><button id="imp-an" class="btn" type="button">Analisar</button><button id="imp-go" class="btn primary" type="submit">Criar job</button></div>
+  </form>
+</dialog>
 <noscript>Ative o JavaScript para ver a Fábrica de Clipe.</noscript>
 <script type="module" src="src/main.js"></script>
 </body>

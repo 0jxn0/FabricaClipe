@@ -113,7 +113,7 @@ export class UIController {
   }
 
   renderActivity() {
-    const el = $('area-act'), id = this.currentDesk();
+    const el = $('act-info'), id = this.currentDesk();
     if (!id) { el.innerHTML = '<p class="hint">Aguardando eventos. Toque numa estação para ver agente, job e progresso.</p>'; return; }
     const d = this.desks.find((x) => x.id === id), i = this.desks.indexOf(d), v = this.views.get(id);
     const pct = v.progress != null && v.status === 'working' ? Math.round(v.progress) : null, le = v.lastEvent, a = this.lastAct;

@@ -16,7 +16,7 @@ export const CreateJobInput = z.object({
   sourcePath: z.string().min(1).max(1024),
   platforms: z.array(Platform).max(4).default([]),
   priority: z.number().int().min(0).max(9).default(5),
-  config: z.object({ cut: z.object({ startSec: z.number().min(0).optional(), durationSec: z.number().min(0.5).max(3600).optional() }).default({}), subtitleLang: z.string().max(16).default('pt'), render: RenderConfig }).default({ cut: {}, subtitleLang: 'pt', render: RenderConfig.parse(undefined) }),
+  config: z.object({ cut: z.object({ startSec: z.number().min(0).optional(), durationSec: z.number().min(0.5).max(3600).optional() }).default({}), subtitleLang: z.string().regex(/^[a-z]{2,3}(-[A-Za-z0-9]{2,8})?$/).default('pt'), subtitles: z.enum(['auto', 'off']).default('auto'), render: RenderConfig }).default({ cut: {}, subtitleLang: 'pt', subtitles: 'auto', render: RenderConfig.parse(undefined) }),
 });
 export type CreateJobInput = z.infer<typeof CreateJobInput>;
 

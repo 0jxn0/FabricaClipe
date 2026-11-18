@@ -88,7 +88,7 @@ export class CaptureWorker implements Worker {
 
     const base = final.slice(0, -path.extname(final).length);
     const thumb = `${base}.thumb.jpg`, meta = `${base}.metadata.json`; created.push(thumb, meta);
-    const r = await run(this.bins.ffmpeg, ['-v', 'error', '-y', '-ss', (m.durationSec * 0.1).toFixed(3), '-i', final, '-frames:v', '1', '-q:v', '3', thumb], { signal, timeoutMs: 60000 });
+    const r = await run(this.bins.ffmpeg, ['-v', 'error', '-y', '-ss', (m.durationSec * 0.1).toFixed(3), '-i', final, '-frames:v', '1', '-q:v', '3', '-update', '1', thumb], { signal, timeoutMs: 60000 });
     if (r.code !== 0 || !fs.existsSync(thumb) || fs.statSync(thumb).size === 0) throw new Error(`Falha ao gerar miniatura: ${r.stderr.trim().split('\n').pop() ?? ''}`);
     ctx.reportProgress(98, 'Miniatura gerada');
 
