@@ -1,0 +1,17 @@
+{
+  "name": "fabricaclipe",
+  "version": "1.0.0",
+  "description": "Fábrica de Clipe: escritório 2.5D (Three.js) ligado ao backend por WebSocket",
+  "type": "module",
+  "scripts": {
+    "start": "node server/server.js",
+    "demo": "node server/server.js --demo",
+    "test": "node --test tests/events.test.mjs tests/flow.test.mjs tests/stats.test.mjs"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "simple-icons": "^16.38.0",
+    "three": "^0.187.0",
+    "ws": "^8.23.0"
+  }
+}

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0d14">
+<title>Fábrica de Clipe</title>
+<link rel="stylesheet" href="styles.css">
+<script type="importmap">{ "imports": { "three": "/vendor/three/three.module.js" } }</script>
+</head>
+<body>
+<header id="top">
+  <h1>Fábrica de Clipe</h1>
+  <span id="conn" class="pill" data-state="wait" role="status"><i></i><b>Conectando…</b></span>
+  <span id="count" class="muted">6 estações</span>
+</header>
+<main id="stage"><div id="hits"></div>
+  <aside id="kpi" aria-label="Métricas da fábrica">
+    <header><b>Métricas</b><button id="kpi-toggle" type="button" aria-expanded="true" aria-controls="kpi-body" title="Minimizar">&minus;</button></header>
+    <div id="kpi-body">
+      <div class="kgrid">
+        <div><b id="k-done">0</b><span>Vídeos feitos</span></div>
+        <div><b id="k-prod">0</b><span>Em produção</span></div>
+        <div><b id="k-fail">0</b><span>Com falha</span></div>
+        <div><b id="k-rate">—</b><span>Sucesso</span></div>
+        <div><b id="k-avg">—</b><span>Tempo médio</span></div>
+        <div><b id="k-hour">0</b><span>Vídeos/hora</span></div>
+      </div>
+      <h3>Publicações</h3><ul id="k-plat"></ul>
+      <h3>Concluídos por estação</h3><div id="k-desk"></div>
+    </div>
+  </aside></main>
+<section id="bar" aria-label="Painel de operação">
+  <div id="area-ind" class="area">
+    <div class="metrics">
+      <div><b id="m-working">0</b><span>Trabalhando</span></div>
+      <div><b id="m-free">6</b><span>Disponíveis</span></div>
+      <div><b id="m-jobs">0</b><span>Jobs ativos</span></div>
+    </div>
+    <div id="m-state" data-s="idle"><i></i><b>Fábrica ociosa</b></div>
+  </div>
+  <div id="area-belt" class="area" aria-label="Esteira de produção"><canvas id="belt"></canvas></div>
+  <div id="area-act" class="area" aria-live="polite"></div>
+</section>
+<noscript>Ative o JavaScript para ver a Fábrica de Clipe.</noscript>
+<script type="module" src="src/main.js"></script>
+</body>
+</html>
