@@ -4,10 +4,17 @@ import { minSize } from './OfficeLayout.js';
 export class ResponsiveManager {
   constructor(stage, onChange) {
     this.stage = stage; this.onChange = onChange; this.last = null; this.raf = 0;
-    const schedule = () => { cancelAnimationFrame(this.raf); this.raf = requestAnimationFrame(() => this.update()); };
-    new ResizeObserver(schedule).observe(stage);
-    window.addEventListener('resize', schedule);
-    window.addEventListener('orientationchange', schedule);
+    this.dead = false;
+    this.schedule = () => { cancelAnimationFrame(this.raf); this.raf = requestAnimationFrame(() => this.update()); };
+    this.ro = new ResizeObserver(this.schedule); this.ro.observe(stage);
+    window.addEventListener('resize', this.schedule);
+    window.addEventListener('orientationchange', this.schedule);
+  }
+
+  destroy() {
+    this.dead = true; cancelAnimationFrame(this.raf); this.ro.disconnect();
+    window.removeEventListener('resize', this.schedule);
+    window.removeEventListener('orientationchange', this.schedule);
   }
 
   measure() {
@@ -23,6 +30,7 @@ export class ResponsiveManager {
   }
 
   update() {
+    if (this.dead) return;
     const m = this.measure();
     const l = this.last;
     if (l && l.devW === m.devW && l.devH === m.devH && l.s === m.s && l.cols === m.cols) return;

@@ -39,7 +39,7 @@ class Station {
     this.look = LOOKS[desk.look];
     this.poseKey = ''; this.monT = 0; this.plqT = 0; this.fxT = 0;
     this.plqDirty = this.monDirty = this.fxDirty = true;
-    this.job = null; this.jobMode = 'normal'; this.pulseT = -9;
+    this.job = null; this.jobMode = 'normal'; this.pulseT = -9; this.unavail = false;
 
     this.base = scene.sprite(drawDeskBase(index), L.base);
     this.glow = scene.sprite(drawGlow(), L.glow, { additive: true, color: 0x35e0ff, opacity: 0.3 });
@@ -70,6 +70,8 @@ class Station {
     this.glow.mat.color.set(STATUS_COLOR[view.status]);
     this.monDirty = this.plqDirty = this.fxDirty = true;
   }
+
+  setUnavailable(on) { if (on !== this.unavail) { this.unavail = on; this.monDirty = this.plqDirty = true; } }
 
   setJob(job, mode) {
     if (job?.id !== this.job?.id || mode !== this.jobMode || JSON.stringify(job?.platforms) !== this.platKey) {
@@ -104,12 +106,12 @@ class Station {
     this.monT -= dt;
     if (this.monDirty || this.monT <= 0) {
       this.monT = s === 'working' ? 1 / 14 : 1 / 8; this.monDirty = false;
-      this.monitor.draw(this.view, t, linkOk, this.index === 5 ? pubState(this.job) : null); this.mon.tex.needsUpdate = true;
+      this.monitor.draw(this.view, t, linkOk, this.index === 5 ? pubState(this.job) : null, this.unavail); this.mon.tex.needsUpdate = true;
     }
     this.plqT -= dt;
     if (this.plqDirty || (this.plqT <= 0 && s !== 'idle')) {
       this.plqT = 0.25; this.plqDirty = false;
-      drawPlaque(this.plaqueCtx, this.desk, this.index, this.view, t); this.plaque.tex.needsUpdate = true;
+      drawPlaque(this.plaqueCtx, this.desk, this.index, this.view, t, this.unavail); this.plaque.tex.needsUpdate = true;
     }
     this.fxT -= dt;
     const animating = t - this.pulseT < 0.5 || this.job?.platforms.some((q) => q.state === 'publishing');
@@ -140,6 +142,8 @@ export class WorkerManager {
   layout(cells) { this.cells = cells; this.list.forEach((s, i) => s.moveTo(cells[i].x, cells[i].y)); }
   apply(view) { this.stations.get(view.deskId)?.setView(view); }
   setLink(ok) { this.linkOk = ok; }
+  /** reasons: { deskId: motivo }; estações listadas ficam "indisponíveis" enquanto ociosas. */
+  setUnavailable(reasons) { for (const s of this.list) s.setUnavailable(!!reasons[s.desk.id]); }
   setHover(id) { for (const s of this.list) s.hoverSprite.mesh.visible = s.desk.id === id; }
   setSelected(id) { for (const s of this.list) s.selSprite.mesh.visible = s.desk.id === id; }
 

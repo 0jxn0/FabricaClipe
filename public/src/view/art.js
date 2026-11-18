@@ -57,17 +57,18 @@ export function drawGlow() {
 }
 
 /** Plaqueta do chão com número, nome e LED de atividade (redesenhada ao mudar estado). */
-export function drawPlaque(g, desk, index, view, t) {
+export function drawPlaque(g, desk, index, view, t, unavail = false) {
   const { w, h } = PLAQUE;
   g.clearRect(0, 0, w, h);
   R(g, '#05070c', 0, 0, w, h); R(g, '#1a2136', 1, 1, w - 2, h - 2); R(g, '#2a3452', 1, 1, w - 2, 1);
-  const col = STATUS_COLOR[view.status];
+  const off = unavail && view.status === 'idle';
+  const col = off ? '#7f8db3' : STATUS_COLOR[view.status];
   const blink = view.status === 'idle' || view.status === 'completed' || Math.floor(t * 4) % 2 === 0;
   g.globalAlpha = blink ? 1 : 0.35; R(g, col, 3, 2, 5, 5); g.globalAlpha = 1;
   R(g, 'rgba(255,255,255,.35)', 4, 3, 1, 1);
   drawText(g, `${String(index + 1).padStart(2, '0')} ${desk.short}`, 11, 2, '#c8d4f0');
   const tag = { idle: 'LIVRE', queued: 'FILA', working: 'ATIVO', completed: 'PRONTO', cancelled: 'CANCEL', error: 'ERRO' }[view.status];
-  drawText(g, tag, w - 3, 2, col, 'r');
+  drawText(g, off ? 'INDISP' : tag, w - 3, 2, col, 'r');
 }
 
 /** Anel de seleção/hover (retângulo vazado de cantos). */

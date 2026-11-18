@@ -60,7 +60,7 @@ dd { margin:0; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space
 #k-plat li { display:flex; align-items:center; gap:7px; } #k-plat canvas { width:18px; height:18px; image-rendering:pixelated; flex:none; }
 #k-plat .ok { color:var(--gr); margin-left:auto; font-variant-numeric:tabular-nums; } #k-plat .bad { color:var(--rd); font-variant-numeric:tabular-nums; min-width:22px; text-align:right; }
 #k-desk { display:grid; gap:3px; } .krow { display:grid; grid-template-columns:58px 1fr 22px; align-items:center; gap:6px; color:var(--mut); }
-.krow i { display:block; height:6px; background:#0a0d14; border:1px solid var(--line); } .krow i u { display:block; height:100%; background:var(--cy); text-decoration:none; }
+.krow i { display:block; height:6px; background:#0a0d14; border:1px solid var(--line); } .krow i u { display:block; width:0; height:100%; background:var(--cy); text-decoration:none; }
 .krow em { font-style:normal; color:var(--txt); text-align:right; font-variant-numeric:tabular-nums; }
 @media (max-width:900px) { #bar { grid-template-columns:170px minmax(0,1fr) 260px; } .metrics { gap:10px; } .metrics b { font-size:18px; } }
 @media (max-width:639px), (max-aspect-ratio:9/10) {
@@ -90,6 +90,7 @@ dd { margin:0; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space
 .btn.danger { color:var(--rd); border-color:var(--rd); } .btn.sm { padding:3px 10px; min-height:28px; }
 .btn[hidden] { display:none; }
 #act-info { min-width:0; }
+.fe-sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
 .jobctl { display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:6px; } .jobctl[hidden] { display:none; }
 .jc-name { flex:1 1 100%; color:var(--mut); font-size:11px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .drawer { position:absolute; right:10px; top:10px; z-index:6; width:min(380px, calc(100% - 20px)); max-height:calc(100% - 20px); overflow:auto; display:grid; gap:6px; padding:10px; background:rgba(13,18,34,.97); border:1px solid var(--cy); border-radius:8px; }

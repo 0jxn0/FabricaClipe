@@ -8,14 +8,16 @@ const EVT_TXT = {
   'clip.job.transferred': 'arquivo transferido', 'clip.job.received': 'arquivo recebido', 'clip.job.publishing': 'publicando',
   'clip.job.published': 'publicado', 'clip.job.publish_failed': 'falha ao publicar',
 };
-const $ = (id) => document.getElementById(id);
 const hhmmss = (ms) => new Date(ms).toLocaleTimeString('pt-BR');
 
 export class UIController {
-  constructor(desks, { onSelect, onHover }) {
+  /** root: documento (página inteira) ou o container do componente embutido; os ids são resolvidos dentro dele. */
+  constructor(desks, { onSelect, onHover }, root = document) {
+    this.$ = (id) => root.querySelector(`#${id}`);
     this.desks = desks; this.views = new Map(); this.selected = null; this.conn = { state: 'connecting' };
     this.onSelect = onSelect; this.onHover = onHover; this.hits = new Map(); this.lastAct = null; this.onCurrent = () => {};
-    $('count').textContent = `${desks.length} estações`;
+    this.unavail = {}; // deskId -> motivo (estação sem serviço; o desk fica ocioso)
+    const count = this.$('count'); if (count) count.textContent = `${desks.length} estações`;
     desks.forEach((d, i) => {
       const b = document.createElement('button');
       b.className = 'hit'; b.type = 'button'; b.dataset.desk = d.id;
@@ -25,16 +27,30 @@ export class UIController {
       b.addEventListener('pointerenter', (e) => e.pointerType === 'mouse' && onHover(d.id));
       b.addEventListener('pointerleave', () => onHover(null));
       b.addEventListener('focus', () => onHover(d.id)); b.addEventListener('blur', () => onHover(null));
-      $('hits').append(b); this.hits.set(d.id, b);
+      this.$('hits').append(b); this.hits.set(d.id, b);
       this.views.set(d.id, { deskId: d.id, status: 'idle', queued: 0, lastEvent: null, updatedAt: 0 });
     });
     this._initKpi();
     this.renderActivity(); this.renderStats();
-    setInterval(() => { this.renderConn(); this.renderStats(); }, 1000);
+    this.timer = setInterval(() => { this.renderConn(); this.renderStats(); }, 1000);
+  }
+
+  /** Teardown: o único estado global é o intervalo (os listeners vivem em nós do próprio container). */
+  destroy() { clearInterval(this.timer); this.onCurrent = () => {}; }
+
+  /** reasons: { deskId: motivo }. Estação indisponível aparece como tal na plaqueta/monitor e no painel de atividade. */
+  setUnavailable(reasons) {
+    this.unavail = { ...reasons };
+    this.desks.forEach((d, i) => {
+      const b = this.hits.get(d.id), r = this.unavail[d.id];
+      b.setAttribute('aria-label', `Estação ${i + 1}: ${d.name}, ${d.agent}${r ? `. Indisponível: ${r}` : ''}`);
+      if (r) b.dataset.unavailable = ''; else delete b.dataset.unavailable;
+    });
+    this.renderStats(); this.renderActivity();
   }
 
   _initKpi() {
-    const box = $('kpi'), btn = $('kpi-toggle'); this.kpi = {};
+    const box = this.$('kpi'), btn = this.$('kpi-toggle'); this.kpi = {};
     const set = (min) => { box.classList.toggle('min', min); btn.setAttribute('aria-expanded', String(!min)); btn.innerHTML = min ? '+' : '&minus;'; btn.title = min ? 'Expandir' : 'Minimizar';};
     btn.addEventListener('click', () => {
       const min = !box.classList.contains('min'); this._kpiUser = true; set(min);
@@ -43,23 +59,23 @@ export class UIController {
     let saved = null; try { saved = localStorage.getItem('fabrica.kpi.min'); } catch { /* sem storage */ }
     this._kpiSet = set; this._kpiUser = saved != null;
     set(saved != null ? saved === '1' : true);
-    $('k-plat').innerHTML = PIPES.map((id) => `<li data-p="${id}"><canvas width="12" height="12"></canvas><span>${id}</span><b class="ok">0</b><b class="bad"></b></li>`).join('');
-    $('k-plat').querySelectorAll('li').forEach((li) => { const c = li.querySelector('canvas').getContext('2d'); c.imageSmoothingEnabled = false; c.drawImage(platformTile(li.dataset.p), 0, 0); });
-    $('k-desk').innerHTML = this.desks.map((d) => `<div class="krow"><span>${d.name}</span><i><u style="width:0"></u></i><em>0</em></div>`).join('');
+    this.$('k-plat').innerHTML = PIPES.map((id) => `<li data-p="${id}"><canvas width="12" height="12"></canvas><span>${id}</span><b class="ok">0</b><b class="bad"></b></li>`).join('');
+    this.$('k-plat').querySelectorAll('li').forEach((li) => { const c = li.querySelector('canvas').getContext('2d'); c.imageSmoothingEnabled = false; c.drawImage(platformTile(li.dataset.p), 0, 0); });
+    this.$('k-desk').innerHTML = this.desks.map((d) => `<div class="krow"><span>${d.name}</span><i><u></u></i><em>0</em></div>`).join('');
   }
 
   setStats(k) {
     this.k = k;
     const fmt = (s) => (s == null ? '—' : s >= 60 ? `${Math.floor(s / 60)}m${String(Math.round(s % 60)).padStart(2, '0')}s` : `${Math.round(s)}s`);
     const vs = [...this.views.values()];
-    $('k-done').textContent = k.done; $('k-fail').textContent = k.failed; $('k-hour').textContent = k.perHour;
-    $('k-prod').textContent = vs.filter((v) => v.status === 'working').length + vs.reduce((n, v) => n + (v.queued || 0), 0);
-    $('k-rate').textContent = k.successRate == null ? '—' : `${k.successRate}%`; $('k-avg').textContent = fmt(k.avgSec);
-    $('k-plat').querySelectorAll('li').forEach((li) => {
+    this.$('k-done').textContent = k.done; this.$('k-fail').textContent = k.failed; this.$('k-hour').textContent = k.perHour;
+    this.$('k-prod').textContent = vs.filter((v) => v.status === 'working').length + vs.reduce((n, v) => n + (v.queued || 0), 0);
+    this.$('k-rate').textContent = k.successRate == null ? '—' : `${k.successRate}%`; this.$('k-avg').textContent = fmt(k.avgSec);
+    this.$('k-plat').querySelectorAll('li').forEach((li) => {
       const c = k.plat[li.dataset.p]; li.querySelector('.ok').textContent = c?.published ?? 0; li.querySelector('.bad').textContent = c?.failed ? `✕${c.failed}` : '';
     });
     const max = Math.max(1, ...Object.values(k.byDesk));
-    $('k-desk').querySelectorAll('.krow').forEach((r, i) => { const n = k.byDesk[this.desks[i].id]; r.querySelector('u').style.width = `${(n / max) * 100}%`; r.querySelector('em').textContent = n; });
+    this.$('k-desk').querySelectorAll('.krow').forEach((r, i) => { const n = k.byDesk[this.desks[i].id]; r.querySelector('u').style.width = `${(n / max) * 100}%`; r.querySelector('em').textContent = n; });
   }
 
   /** Estação em destaque: a selecionada; senão a que trabalha mais recentemente; senão a do último evento. */
@@ -92,7 +108,8 @@ export class UIController {
   }
 
   renderConn() {
-    const { state, retryIn, at } = this.conn, el = $('conn');
+    const { state, retryIn, at } = this.conn, el = this.$('conn');
+    if (!el) return; // componente embutido: a conexão é do aplicativo hospedeiro
     el.dataset.state = state === 'open' ? 'open' : state === 'disconnected' ? 'down' : 'wait';
     el.querySelector('b').textContent = state === 'open' ? 'Conectado'
       : state === 'disconnected' ? `Desconectado · nova tentativa em ${Math.max(0, Math.ceil((retryIn - (Date.now() - at)) / 1000))}s`
@@ -103,33 +120,36 @@ export class UIController {
     const vs = [...this.views.values()];
     const working = vs.filter((v) => v.status === 'working').length, errors = vs.filter((v) => v.status === 'error').length;
     const queued = vs.reduce((n, v) => n + (v.queued || 0), 0);
-    $('m-working').textContent = working;
-    $('m-free').textContent = vs.filter((v) => v.status === 'idle').length;
-    $('m-jobs').textContent = working + queued;
+    this.$('m-working').textContent = working;
+    this.$('m-free').textContent = vs.filter((v) => v.status === 'idle' && !this.unavail[v.deskId]).length;
+    this.$('m-jobs').textContent = working + queued;
     const up = this.conn.state === 'open';
     const [s, txt] = !up ? ['wait', 'Sem conexão · último estado'] : errors ? ['fail', working ? `Produzindo · ${errors} falha${errors > 1 ? 's' : ''}` : `Com ${errors} falha${errors > 1 ? 's' : ''}`]
       : working ? ['work', 'Fábrica produzindo'] : queued ? ['wait', 'Jobs na fila'] : ['idle', 'Fábrica ociosa'];
-    const el = $('m-state'); el.dataset.s = s; el.querySelector('b').textContent = txt;
+    const el = this.$('m-state'); el.dataset.s = s; el.querySelector('b').textContent = txt;
   }
 
   renderActivity() {
-    const el = $('act-info'), id = this.currentDesk();
+    const el = this.$('act-info'), id = this.currentDesk();
     if (!id) { el.innerHTML = '<p class="hint">Aguardando eventos. Toque numa estação para ver agente, job e progresso.</p>'; return; }
     const d = this.desks.find((x) => x.id === id), i = this.desks.indexOf(d), v = this.views.get(id);
     const pct = v.progress != null && v.status === 'working' ? Math.round(v.progress) : null, le = v.lastEvent, a = this.lastAct;
+    const un = v.status === 'idle' ? this.unavail[id] : null;
     el.innerHTML = `
-      <div class="d-head"><strong></strong><span></span><em class="st st-${v.status}">${STATUS_TXT[v.status]}</em></div>
+      <div class="d-head"><strong></strong><span></span><em class="st st-${un ? 'error' : v.status}">${un ? 'Indisponível' : STATUS_TXT[v.status]}</em></div>
       <dl>
         <div><dt>Job</dt><dd></dd></div>
-        <div><dt>Progresso</dt><dd>${v.status === 'working' ? (pct != null ? `<span class="bar"><i style="width:${pct}%"></i></span> ${pct}%` : 'não informado') : '—'}</dd></div>
+        <div><dt>Progresso</dt><dd>${v.status === 'working' ? (pct != null ? `<span class="bar"><i></i></span> ${pct}%` : 'não informado') : '—'}</dd></div>
         <div><dt>Último evento</dt><dd></dd></div>
         <div><dt>Última atividade</dt><dd></dd></div>
       </dl>`;
+    // largura via CSSOM (CSP do app hospedeiro proíbe style="" inline)
+    const fill = el.querySelector('.bar i'); if (fill) fill.style.width = `${pct}%`;
     // texto vindo do backend entra como textContent, nunca como HTML
     el.querySelector('strong').textContent = d.agent;
     el.querySelector('.d-head span').textContent = `${String(i + 1).padStart(2, '0')} ${d.name}${this.selected ? ' · selecionada' : ''}`;
     const dd = el.querySelectorAll('dd');
-    dd[0].textContent = v.jobId ? `${v.title ? v.title + ' · ' : ''}${v.jobId}${v.error ? ' — ' + v.error : ''}` : 'sem job';
+    dd[0].textContent = un ? `indisponível: ${un}` : v.jobId ? `${v.title ? v.title + ' · ' : ''}${v.jobId}${v.error ? ' — ' + v.error : ''}` : 'sem job';
     dd[2].textContent = le ? `${EVT_TXT[le.type]} · ${hhmmss(le.receivedAt)}` : 'nenhum';
     dd[3].textContent = a ? `${a.deskId} · ${EVT_TXT[a.type]}${a.type === 'clip.job.progress' && a.progress != null ? ` ${Math.round(a.progress)}%` : ''}` : '—';
   }

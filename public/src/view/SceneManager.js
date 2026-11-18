@@ -12,8 +12,23 @@ export class SceneManager {
     this.camera = new THREE.OrthographicCamera(0, 1, 0, -1, 0.1, 100);
     this.camera.position.z = 50;
     this.bgMesh = null;
-    this.ticks = []; this.running = false; this.last = 0; this.time = 0;
-    document.addEventListener('visibilitychange', () => (document.hidden ? this.stop() : this.start()));
+    this.ticks = []; this.running = false; this.last = 0; this.time = 0; this.raf = 0; this.dead = false;
+    this.onVisibility = () => (document.hidden ? this.stop() : this.start());
+    document.addEventListener('visibilitychange', this.onVisibility);
+  }
+
+  /** Teardown: para o loop, solta listeners e libera GPU (inclui o contexto WebGL, limitado a ~16 por página). */
+  destroy() {
+    if (this.dead) return;
+    this.dead = true; this.stop(); this.ticks = [];
+    document.removeEventListener('visibilitychange', this.onVisibility);
+    this.scene.traverse((o) => {
+      o.geometry?.dispose();
+      for (const m of [].concat(o.material ?? [])) { m.map?.dispose(); m.dispose(); }
+    });
+    this.renderer.dispose();
+    this.renderer.forceContextLoss();
+    this.renderer.domElement.remove();
   }
 
   /** Cria textura nearest-neighbor a partir de um canvas. */
@@ -57,18 +72,29 @@ export class SceneManager {
 
   onTick(fn) { this.ticks.push(fn); }
 
+  /** Pausa "dura": stop() + impede o visibilitychange de religar o loop. */
+  hold() { this.held = true; this.stop(); }
+  release() { this.held = false; if (!document.hidden) this.start(); }
+
+  /** Desenha 1 quadro estático (dt=0) sem loop; usado com o loop pausado. */
+  renderOnce() {
+    if (this.dead) return;
+    for (const fn of this.ticks) fn(0, this.time);
+    this.renderer.render(this.scene, this.camera);
+  }
+
   start() {
-    if (this.running) return;
+    if (this.running || this.dead || this.held) return;
     this.running = true; this.last = performance.now();
     const loop = (now) => {
       if (!this.running) return;
-      requestAnimationFrame(loop);
+      this.raf = requestAnimationFrame(loop);
       const dt = Math.min(0.1, (now - this.last) / 1000); this.last = now; this.time += dt;
       for (const fn of this.ticks) fn(dt, this.time);
       this.renderer.render(this.scene, this.camera);
     };
-    requestAnimationFrame(loop);
+    this.raf = requestAnimationFrame(loop);
   }
 
-  stop() { this.running = false; }
+  stop() { this.running = false; cancelAnimationFrame(this.raf); }
 }

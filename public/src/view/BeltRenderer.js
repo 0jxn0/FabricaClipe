@@ -14,9 +14,11 @@ export class BeltRenderer {
     this.c = canvas; this.g = canvas.getContext('2d'); this.desks = desks;
     this.sprites = new Map(); this.hidden = new Map(); this.pulses = []; this.jobs = []; this.views = new Map(); this.active = null;
     this.now = 0; this.entryT = -9; this.exitT = -9; this.acc = 0;
-    new ResizeObserver(() => this.resize()).observe(canvas.parentElement);
+    this.ro = new ResizeObserver(() => this.resize()); this.ro.observe(canvas.parentElement);
     this.resize();
   }
+
+  destroy() { this.ro.disconnect(); this.sprites.clear(); this.hidden.clear(); this.pulses = []; this.jobs = []; }
 
   resize() {
     const w = this.c.parentElement.clientWidth;
@@ -98,7 +100,7 @@ export class BeltRenderer {
 
   draw(dt, t) {
     this.now = t; this.acc += dt;
-    if (this.acc < 1 / 30) return;
+    if (dt > 0 && this.acc < 1 / 30) return; // dt=0 = quadro estático pedido (movimento reduzido): desenha sempre
     this.acc = 0;
     const g = this.g, W = this.W;
     g.clearRect(0, 0, W, BELT_H);

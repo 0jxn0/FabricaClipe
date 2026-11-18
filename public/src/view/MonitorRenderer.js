@@ -33,13 +33,14 @@ export class MonitorRenderer {
     this.frame = MonitorRenderer.frame ??= makeFrame();
   }
 
-  draw(view, t, linkOk, pub = null) {
+  draw(view, t, linkOk, pub = null, unavail = false) {
     const g = this.ctx;
     g.clearRect(0, 0, MON_W, MON_H);
     g.drawImage(this.frame, 0, 0);
     g.save(); g.translate(SX, SY); g.beginPath(); g.rect(0, 0, SW, SH); g.clip();
     const s = view.status;
-    if (s === 'working') this._working(g, view, t);
+    if (unavail && s === 'idle') this._unavail(g);
+    else if (s === 'working') this._working(g, view, t);
     else if (s === 'completed') this._completed(g, view, t, pub);
     else if (s === 'error') this._error(g, view, t);
     else if (s === 'cancelled') this._cancelled(g, view, t);
@@ -130,6 +131,13 @@ export class MonitorRenderer {
     drawText(g, 'FALHA', 14, 3, '#ff4d5e');
     drawText(g, fit(jobLabel(v.jobId), 7), 14, 9, '#ffb347');
     wrap(v.error || 'ERRO', 11, 2).forEach((l, i) => drawText(g, l, 2, 15 + i * 6, '#ffb3bb'));
+  }
+
+  _unavail(g) { // estação sem serviço: tela apagada, sem animação
+    g.fillStyle = '#0c0e14'; g.fillRect(0, 0, SW, SH);
+    g.fillStyle = '#3a4260'; g.fillRect(0, 0, SW, 1);
+    drawText(g, 'FORA DO AR', 22, 8, '#7f8db3', 'c');
+    drawText(g, 'SEM SERVICO', 22, 15, '#4a5578', 'c');
   }
 
   _cancelled(g, v) {
