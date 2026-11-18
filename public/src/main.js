@@ -14,6 +14,7 @@ import { ResponsiveManager } from './view/ResponsiveManager.js';
 import { computeLayout } from './view/OfficeLayout.js';
 import { drawBackground } from './view/art.js';
 import { DesktopControls } from './view/DesktopControls.js';
+import { IntegrationsPanel } from './view/IntegrationsPanel.js';
 
 const ids = DESKS.map((d) => d.id);
 const stage = document.getElementById('stage');
@@ -43,6 +44,7 @@ if (new URLSearchParams(location.search).has('debug')) events.on('event', (r) =>
 const ws = window.fabrica ? new IpcTransport(window.fabrica) : new WebSocketClient(resolveWsUrl());
 // Controles reais (importar, pausar/cancelar, aprovar com preview): só no app desktop; no navegador nada muda.
 const desktop = window.fabrica ? new DesktopControls(window.fabrica, ui) : null;
+if (window.fabrica?.integrations) new IntegrationsPanel(window.fabrica);
 if (desktop) { ui.onCurrent = ((prev) => () => { prev(); desktop.render(); })(ui.onCurrent); }
 ws.on('message', (m) => { events.handle(m); desktop?.onEvent(m); });
 ws.on('status', (s) => { workers.setLink(s.state === 'open'); ui.setConnection(s); });

@@ -16,6 +16,11 @@ const api: FabricaApi = {
     snapshot: () => call(CH.eventsSnapshot), since: (seq) => call(CH.eventsSince, { seq }),
     onEvent: (cb) => { const h = (_: unknown, e: Record<string, unknown>) => cb(e); ipcRenderer.on(CH.eventPush, h); return () => ipcRenderer.removeListener(CH.eventPush, h); },
   },
+  integrations: {
+    list: () => call(CH.integList), guide: (platform) => call(CH.integGuide, { platform }), saveCredentials: (i) => call(CH.integSave, i),
+    connect: (platform) => call(CH.integConnect, { platform }), disconnect: (platform) => call(CH.integDisconnect, { platform }),
+    test: (platform) => call(CH.integTest, { platform }), openConsole: (platform, consoleId) => call(CH.integConsole, { platform, consoleId }),
+  },
   system: { diagnostics: () => call(CH.diagnostics), quitFactory: () => call(CH.quit) },
 };
 contextBridge.exposeInMainWorld('fabrica', Object.freeze(api));

@@ -116,6 +116,14 @@ app.whenReady().then(async () => {
       fs.rmSync(good, { force: true }); fs.rmSync(outside, { force: true });
     }
     // Fluxo real ponta a ponta (só com --smoke e um vídeo informado pelo lançador, nunca pelo renderer)
+    // Captura de tela da janela (só com --smoke e FABRICA_SMOKE_SHOT): útil para ver o painel de Integrações renderizado
+    if (process.env.FABRICA_SMOKE_SHOT) {
+      win!.setSize(1280, 820); win!.showInactive(); await new Promise((r) => setTimeout(r, 2500));
+      await win!.webContents.executeJavaScript("document.getElementById('integ-open').click()"); await new Promise((r) => setTimeout(r, 1500));
+      fs.writeFileSync(process.env.FABRICA_SMOKE_SHOT, (await win!.webContents.capturePage()).toPNG());
+      await win!.webContents.executeJavaScript("document.getElementById('integ-dlg').scrollTop = 600"); await new Promise((r) => setTimeout(r, 500));
+      fs.writeFileSync(process.env.FABRICA_SMOKE_SHOT.replace('.png', '-2.png'), (await win!.webContents.capturePage()).toPNG());
+    }
     const vid = process.env.FABRICA_SMOKE_VIDEO;
     if (vid) {
       const wait = async (f: () => boolean, ms: number) => { const t = Date.now(); while (!f() && Date.now() - t < ms) await new Promise((r) => setTimeout(r, 200)); };

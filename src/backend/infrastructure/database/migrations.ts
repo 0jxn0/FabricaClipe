@@ -32,4 +32,5 @@ export const MIGRATIONS: { id: number; name: string; sql: string }[] = [
     CREATE INDEX event_logs_job ON event_logs (job_id, seq);
     CREATE TABLE execution_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, level TEXT NOT NULL, timestamp TEXT NOT NULL, job_id TEXT, station_id TEXT, message TEXT NOT NULL, data_json TEXT);
   ` },
+  { id: 2, name: 'status das contas de plataforma', sql: `ALTER TABLE platform_accounts ADD COLUMN status TEXT NOT NULL DEFAULT 'none';` },
 ];

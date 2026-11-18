@@ -15,6 +15,7 @@
   <span id="count" class="muted">6 estações</span>
   <button id="apv-open" class="btn warn" type="button" hidden aria-expanded="false" aria-controls="apv">Aprovar vídeo <b>0</b></button>
   <button id="btn-import" class="btn primary" type="button" hidden>Importar vídeo</button>
+  <button id="integ-open" class="btn" type="button" hidden aria-haspopup="dialog">Integrações</button>
 </header>
 <main id="stage"><div id="hits"></div>
   <aside id="kpi" aria-label="Métricas da fábrica">
@@ -68,6 +69,14 @@
     <div id="imp-err" class="msg" role="alert" hidden></div>
     <div class="row"><button id="imp-cancel" class="btn" type="button">Cancelar</button><button id="imp-an" class="btn" type="button">Analisar</button><button id="imp-go" class="btn primary" type="submit">Criar job</button></div>
   </form>
+</dialog>
+<dialog id="integ-dlg" class="sheet" aria-labelledby="integ-h" aria-describedby="integ-sub">
+  <header><h2 id="integ-h">Integrações de contas</h2><button id="integ-close" class="btn sm" type="button" aria-label="Fechar integrações">Fechar</button></header>
+  <p id="integ-sub" class="hint">Conecte as contas das plataformas de publicação, seguindo o passo a passo de cada cartão.</p>
+  <p class="msg warn" role="note"><b>Atenção:</b> o adaptador de publicação ainda NÃO existe. Conectar a conta não publica vídeos por enquanto.</p>
+  <p id="integ-vault" class="msg" role="alert" hidden>O armazenamento seguro do sistema está indisponível: não é possível salvar credenciais.</p>
+  <p id="integ-err" class="msg" role="alert" hidden></p>
+  <div id="integ-list"></div>
 </dialog>
 <noscript>Ative o JavaScript para ver a Fábrica de Clipe.</noscript>
 <script type="module" src="src/main.js"></script>

@@ -1,6 +1,9 @@
 // Toda operação privilegiada passa por aqui: valida remetente, valida payload (zod), executa no backend.
 import os from 'node:os';
-import { dialog, ipcMain, type BrowserWindow, type IpcMainInvokeEvent } from 'electron';
+import path from 'node:path';
+import { dialog, ipcMain, safeStorage, shell, type BrowserWindow, type IpcMainInvokeEvent } from 'electron';
+import { CredentialVault } from '../../backend/services/credentials.ts';
+import { IntegrationsService } from '../../backend/integrations/IntegrationsService.ts';
 import { CH, IpcSchemas } from '../../shared/contracts/ipc.ts';
 import type { Backend } from '../bootstrap/backend.ts';
 import { diagnostics } from '../../backend/services/diagnostics.ts';
@@ -44,6 +47,20 @@ export function registerIpc(be: Backend, getWin: () => BrowserWindow | null, qui
   ipcMain.handle(CH.eventsSince, guard((_e, a) => be.bus.since(IpcSchemas.since.parse(a).seq).map((e) => toLegacy(e, true)).filter(Boolean)));
   ipcMain.handle(CH.diagnostics, guard(() => diagnostics({ db: be.db, orch: be.orchestrator, dataDir: be.dataDir, ffmpeg: () => ffCheck() })));
   ipcMain.handle(CH.quit, guard(() => { quit(); }));
+
+  // Contas das plataformas: segredos só no cofre (safeStorage); nenhum handler devolve token/segredo.
+  const integ = new IntegrationsService({
+    vault: new CredentialVault(be.db, path.join(be.dataDir, 'secrets'), safeStorage), openExternal: (u) => shell.openExternal(u),
+    log: (l, m) => be.logger[l](m),
+  });
+  const P = (a: unknown) => IpcSchemas.integPlatform.parse(a).platform;
+  ipcMain.handle(CH.integList, guard(() => integ.list()));
+  ipcMain.handle(CH.integGuide, guard((_e, a) => integ.guide(P(a))));
+  ipcMain.handle(CH.integSave, guard((_e, a) => { const i = IpcSchemas.integSave.parse(a); return integ.saveCredentials(i.platform, i.clientId, i.clientSecret); }));
+  ipcMain.handle(CH.integConnect, guard((_e, a) => integ.connect(P(a))));
+  ipcMain.handle(CH.integDisconnect, guard((_e, a) => integ.disconnect(P(a))));
+  ipcMain.handle(CH.integTest, guard((_e, a) => integ.test(P(a))));
+  ipcMain.handle(CH.integConsole, guard((_e, a) => { const i = IpcSchemas.integConsole.parse(a); return integ.openConsole(i.platform, i.consoleId); }));
 
   // empurra eventos novos ao renderer (contrato legado; o envelope completo fica no event_logs)
   be.bus.subscribe((env) => {
