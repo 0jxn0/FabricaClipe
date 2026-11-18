@@ -1,0 +1,16 @@
+# Empacotamento Windows (NSIS). AINDA NÃO EXECUTADO/TESTADO — ver docs/ARQUITETURA.md, Fase 7.
+appId: br.fabricadeclipe.app
+productName: Fábrica de Clipe
+directories: { output: release }
+files: [dist/**, public/**, node_modules/three/build/**, package.json]
+asar: true
+win:
+  target: [{ target: nsis, arch: [x64] }]
+  # icon: resources/icons/icon.ico   (pendente: ícone oficial)
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  deleteAppDataOnUninstall: false   # projetos e dados do usuário nunca são apagados na desinstalação
+  artifactName: Fabrica-de-Clipe-Setup-${version}.exe

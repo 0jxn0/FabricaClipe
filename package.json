@@ -6,12 +6,26 @@
   "scripts": {
     "start": "node server/server.js",
     "demo": "node server/server.js --demo",
-    "test": "node --test tests/events.test.mjs tests/flow.test.mjs tests/stats.test.mjs"
+    "test": "node --test tests/events.test.mjs tests/flow.test.mjs tests/stats.test.mjs tests/orchestrator.test.ts",
+    "typecheck": "tsc --noEmit -p .",
+    "build": "esbuild src/main/index.ts --bundle --platform=node --format=cjs --external:electron --outfile=dist/main.cjs --log-level=warning && esbuild src/preload/index.ts --bundle --platform=node --format=cjs --external:electron --outfile=dist/preload.cjs --log-level=warning",
+    "desktop": "npm run build && electron .",
+    "smoke": "npm run build && electron . --smoke"
   },
   "license": "ISC",
   "dependencies": {
     "simple-icons": "^16.38.0",
     "three": "^0.187.0",
-    "ws": "^8.23.0"
-  }
+    "ws": "^8.23.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "electron": "^45.3.4",
+    "electron-builder": "^26.18.0",
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2"
+  },
+  "main": "dist/main.cjs",
+  "productName": "Fábrica de Clipe"
 }

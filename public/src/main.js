@@ -5,6 +5,7 @@ import { FlowManager } from './core/FlowManager.js';
 import { StatsManager } from './core/StatsManager.js';
 import { PipeManager } from './view/PipeManager.js';
 import { WebSocketClient } from './core/WebSocketClient.js';
+import { IpcTransport } from './core/IpcTransport.js';
 import { SceneManager } from './view/SceneManager.js';
 import { WorkerManager } from './view/WorkerManager.js';
 import { BeltRenderer } from './view/BeltRenderer.js';
@@ -37,7 +38,8 @@ scene.onTick((dt, t) => { belt.draw(dt, t); pipes.tick(dt, t, stats.snapshot().p
 stats.on(() => ui.setStats(stats.snapshot()));
 if (new URLSearchParams(location.search).has('debug')) events.on('event', (r) => !r.ok && console.debug('[evento rejeitado]', r.reason, r.raw));
 
-const ws = new WebSocketClient(resolveWsUrl());
+// App desktop: IPC tipado do preload. Navegador (dev/rede): WebSocket. O restante da interface não muda.
+const ws = window.fabrica ? new IpcTransport(window.fabrica) : new WebSocketClient(resolveWsUrl());
 ws.on('message', (m) => events.handle(m));
 ws.on('status', (s) => { workers.setLink(s.state === 'open'); ui.setConnection(s); });
 

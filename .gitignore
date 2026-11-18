@@ -2,3 +2,4 @@ node_modules/
 .disktest
 *.log
 .env
+dist/
