@@ -72,6 +72,11 @@ dd { margin:0; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space
   #belt { height:70px; } #area-belt { padding:3px 8px; }
   #area-act { height:78px; } dt { width:80px; } dl div:nth-child(4) { display:none; }
   #kpi { top:auto; bottom:8px; left:8px; max-height:70%; overflow:auto; }
+  /* minimizado no celular: só o botão (o rótulo continua para leitores de tela), para não cobrir as mesas */
+  #kpi.min { background:transparent; border:0; backdrop-filter:none; }
+  #kpi.min header { padding:0; }
+  #kpi.min header b { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+  #kpi.min #kpi-toggle { width:30px; height:30px; background:rgba(13,18,34,.85); border-color:var(--cy); }
   h1 { font-size:14px; } #top { padding:6px 12px; gap:8px; } .pill { font-size:11px; padding:2px 8px; }
 }
 @media (min-width:1600px) { body { font-size:15px; } #area-act, #kpi { font-size:13px; } .metrics b { font-size:24px; } }
